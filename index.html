@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c2733">
+<meta name="referrer" content="no-referrer">
+<title>STR Rapoarte</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bara">
+  <img src="icon-192.png" alt="" class="sigla">
+  <div class="titlu"><b>STR Rapoarte</b><span id="stare">—</span></div>
+  <button id="btnSync" class="btn-ic" title="Adu acum de pe GitHub" aria-label="Adu acum">⟳</button>
+</header>
+
+<main>
+  <!-- intrarea: parola aplicației deblochează cheia de citire -->
+  <section id="v-intrare" class="vedere" hidden>
+    <div class="card intrare">
+      <img src="icon-192.png" alt="" style="width:72px">
+      <h1>STR Rapoarte</h1>
+      <p>Scrie parola aplicației (o știe administratorul).</p>
+      <form id="fIntrare">
+        <input id="iParola" type="password" autocomplete="current-password" placeholder="parola" required>
+        <label class="bifa"><input type="checkbox" id="iTine" checked> Ține minte pe telefonul ăsta</label>
+        <p id="iEroare" class="eroare"></p>
+        <button class="btn prim">Intră</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="v-fise" class="vedere" hidden>
+    <div class="cauta"><input id="fCauta" type="search" placeholder="Caută: cod, marcă, model, serie, defect…" autocomplete="off"></div>
+    <div class="chips" id="fTip"><button data-v="" class="on">Toate</button><button data-v="laptop">💻 Laptop</button><button data-v="pc">🖥️ PC</button><button data-v="monitor">🖵 Monitor</button></div>
+    <div class="chips" id="fRez"><button data-v="" class="on">Toate</button><button data-v="EEER">✓ EEER</button><button data-v="RESPINS">✗ RESPINS</button><button data-v="-">Fără rezultat</button></div>
+    <div class="rand">
+      <select id="fPer"><option value="tot">Toată perioada</option><option value="azi">Azi</option><option value="7z">Ultimele 7 zile</option><option value="luna">Luna asta</option><option value="lunaTrecuta">Luna trecută</option><option value="an">Anul ăsta</option></select>
+      <select id="fSsd"><option value="">Toate SSD-urile</option></select>
+    </div>
+    <div class="rand mic">
+      <label class="bifa"><input type="checkbox" id="fUltim" checked> doar ultimul test al aparatului</label>
+      <label class="bifa"><input type="checkbox" id="fArhiva"> arhiva</label>
+    </div>
+    <div id="sumar" class="sumar"></div>
+    <div id="lista"></div>
+    <button id="maiMult" class="btn lat" hidden>Mai multe</button>
+  </section>
+
+  <section id="v-totaluri" class="vedere" hidden></section>
+  <section id="v-setari" class="vedere" hidden></section>
+</main>
+
+<nav class="jos" id="nav" hidden>
+  <button data-v="fise" class="on">📋<span>Fișe</span></button>
+  <button data-v="totaluri">📊<span>Totaluri</span></button>
+  <button data-v="setari">⚙️<span>Setări</span></button>
+</nav>
+
+<!-- detaliile unei fișe și fișa originală (peste tot) -->
+<div id="detalii" class="foaie" hidden></div>
+<div id="original" class="foaie original" hidden>
+  <div class="foaie-sus"><button id="origInchide" class="btn">✕ Închide</button><span id="origTitlu"></span></div>
+  <iframe id="origCadru" title="fișa" sandbox="allow-same-origin"></iframe>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="fisa.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+ "v": 1,
+ "repo": "littledemo2402/str-rapoarte",
+ "ramura": "main",
+ "kdf": "PBKDF2-SHA256",
+ "iter": 600000,
+ "salt": "Gmy4PBXHz3phZGpfHCm0rg==",
+ "iv": "5fOpyXKyF2JQdB9d",
+ "data": "ZfugtbD2ylL6go+FU2sdLz3VJim1kuuTUcDETD3NJNYTU0rDKZvTg6bqFdcpU6Pwx5CWKUMJuBOhnhJpjv6ZFpy7wcUM5+NMjWPYAlYH0cGfkuvZSO+q8bj1UvWaVaMDvKlQFb0vmwphLeHi6e4zRJ2oGCU+RTWnwQ=="
+}
