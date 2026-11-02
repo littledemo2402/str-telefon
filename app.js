@@ -110,7 +110,7 @@ async function incarca() {
   S.fise = new Map(toate.map(f => [f.path, f]));
   for (const f of toate) {
     if (!f.meta || f.vechi) continue;
-    const cod = f.meta.cod;
+    const cod = String(f.meta.cod || '').trim().replace(/\s*#+$/, '');   // fără „#”-ul pus de scanner: același aparat ca fără el
     for (const t of f.meta.teste) {
       const k = [f.zona, fara(cod), t.nr, t.dataKey, t.rezultat, fara(t.serie)].join('|');
       const r = unice.get(k);
