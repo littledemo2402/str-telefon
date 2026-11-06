@@ -1,6 +1,6 @@
 // STR Rapoarte pe telefon: aplicația (paginile ei) se ține pe telefon, ca să pornească și fără semnal.
 // Fișele nu trec pe aici (stau în IndexedDB); GitHub și cheie.json se cer mereu din rețea.
-const VERSIUNE = 'str-tel-2';
+const VERSIUNE = 'str-tel-3';
 const APLICATIA = ['./', 'index.html', 'app.js', 'fisa.js', 'style.css', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSIUNE).then(c => c.addAll(APLICATIA)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

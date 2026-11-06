@@ -11,6 +11,17 @@ const pad = n => String(n).padStart(2, '0');
 const TIP = { laptop: { i: '💻', t: 'Laptop', p: 'Laptopuri' }, pc: { i: '🖥️', t: 'Unitate PC', p: 'Unități PC' }, monitor: { i: '🖵', t: 'Monitor', p: 'Monitoare' } };
 const RE_FISA = /^([^/]+)\/(Rapoarte|Arhiva rapoarte vechi)\/(?:.*\/)?([^/]+\.(?:html?|txt))$/i;
 const RE_VECHI = /\(inlocuit [^)]*\)/i;          // variantă veche (înlocuită) a unei fișe, urcată de SSD
+// testele șterse definitiv în aplicația de pe PC: fiecare PC pune lista lor în .str-comun/definitiv/<pc>.json (nu se
+// arată nici aici). Cheia unui test e aceeași ca în aplicația de pe PC (biblioteca.js, construieste: kt): codul de pe
+// fișă, nr., data de pe fișă, rezultatul, seria (a testului sau a fișei).
+const RE_DEF = /^\.str-comun\/definitiv\/(pc-[0-9a-f]{8})\.json$/;
+const cheieCod = c => String(c || '').trim().replace(/\s+/g, ' ').toLowerCase();
+function ktTest(meta, t) {
+  const id0 = meta.teste.find(x => x.marca || x.model || x.serie) || {};
+  return [cheieCod(meta.cod || t.codEticheta), t.nr, t.dataKey, t.rezultat, fara(t.serie || id0.serie || '')].join('|');
+}
+// un test din lista celor șterse definitiv (aceeași cheie ca pe PC): nu se arată (incarca)
+const esteSters = (sterse, meta, t) => sterse.size > 0 && sterse.has(ktTest(meta, t));
 const PARSER_V = 1;                                // crește când se schimbă felul în care se citesc fișele
 
 // ---------- memoria telefonului ----------
@@ -67,6 +78,25 @@ async function sincronizeaza(manual) {
   try {
     stare('Verific GitHub…');
     const arbore = await (await gh(`/repos/${CFG.repo}/git/trees/${encodeURIComponent(CFG.ramura)}?recursive=1`, 'application/vnd.github+json')).json();
+    // întâi lista celor șterse definitiv (câte un fișier mic de la fiecare PC; se aduce doar când s-a schimbat): o
+    // sincronizare întreruptă la fișe nu lasă pe telefon fișe noi fără lista lor
+    const def = (arbore.tree || []).filter(e => e.type === 'blob' && RE_DEF.test(e.path) && !(e.size > 2e6));
+    const sterse = mem.get('sterse') || {}, shaNou = Object.fromEntries(def.map(e => [e.path, e.sha]));
+    let alteSterse = false, listaIntreaga = true;
+    if (JSON.stringify(shaNou) !== JSON.stringify(sterse.sha || {})) {
+      const kt = new Set();
+      for (const e of def) {
+        try {
+          const j = await (await gh(`/repos/${CFG.repo}/git/blobs/${e.sha}`, 'application/vnd.github.raw+json')).json();
+          if (j?.v !== 1 || j.pc !== RE_DEF.exec(e.path)[1]) continue;
+          for (const x of Array.isArray(j.kt) ? j.kt : []) if (typeof x === 'string' && x.length < 400) kt.add(x);
+        } catch (x) { if (x.cheie || /internet/.test(x.message)) throw x; listaIntreaga = false; }
+      }
+      // (un fișier care n-a putut fi citit: se încearcă din nou la sincronizarea următoare; până atunci rămân și cele știute)
+      mem.set('sterse', { sha: listaIntreaga ? shaNou : {}, kt: listaIntreaga ? [...kt] : [...new Set([...(sterse.kt || []), ...kt])] });
+      alteSterse = true;
+      await incarca();
+    }
     const avem = new Map((await db.toate()).map(f => [f.path, f]));
     const deAdus = (arbore.tree || []).filter(e => e.type === 'blob' && RE_FISA.test(e.path) && !e.path.split('/').some(p => p.startsWith('.'))
       && (avem.get(e.path)?.sha !== e.sha || avem.get(e.path)?.v !== PARSER_V));
@@ -85,7 +115,9 @@ async function sincronizeaza(manual) {
     mem.set('ultimaSync', Date.now());
     if (deAdus.length) await incarca();
     stare(null);
-    if (manual || deAdus.length) toast(deAdus.length ? `✔ ${deAdus.length - erori} ${deAdus.length - erori === 1 ? 'fișă adusă' : 'fișe aduse'}${erori ? `, ${erori} nu s-au putut citi` : ''}.` : '✔ Nimic nou pe GitHub.');
+    const faraLista = listaIntreaga ? '' : ' ⚠ Lista rapoartelor șterse pe PC n-a putut fi citită toată: reîncerc la sincronizarea următoare.';
+    if (manual || deAdus.length || !listaIntreaga) toast(deAdus.length ? `✔ ${deAdus.length - erori} ${deAdus.length - erori === 1 ? 'fișă adusă' : 'fișe aduse'}${erori ? `, ${erori} nu s-au putut citi` : ''}.${faraLista}`
+      : !listaIntreaga ? faraLista.trim() : alteSterse ? '✔ Lista rapoartelor șterse de pe PC e la zi.' : '✔ Nimic nou pe GitHub.', listaIntreaga ? 4000 : 7000);
   } catch (e) {
     stare(null, e.message); if (manual || e.cheie) toast('⚠ ' + esc(e.message), 7000);
   } finally { lucreaza = false; $('#btnSync').classList.remove('lucru'); }
@@ -108,10 +140,12 @@ async function incarca() {
   const m = new Date(Date.now() + 2 * 86400000), maxKey = +(m.getFullYear() + pad(m.getMonth() + 1) + pad(m.getDate()) + '2359'), minKey = 201501010000;
   const bunaData = k => k && k >= minKey && k <= maxKey ? k : 0;
   S.fise = new Map(toate.map(f => [f.path, f]));
+  const sterse = new Set((mem.get('sterse') || {}).kt || []);     // șterse definitiv pe PC: nu se arată
   for (const f of toate) {
     if (!f.meta || f.vechi) continue;
     const cod = String(f.meta.cod || '').trim().replace(/\s*#+$/, '');   // fără „#”-ul pus de scanner: același aparat ca fără el
     for (const t of f.meta.teste) {
+      if (esteSters(sterse, f.meta, t)) continue;
       const k = [f.zona, fara(cod), t.nr, t.dataKey, t.rezultat, fara(t.serie)].join('|');
       const r = unice.get(k);
       if (r) { if (!r.surse.includes(f.ssd)) r.surse.push(f.ssd); if (t.principal && !r.principal) Object.assign(r, { t, path: f.path, principal: true }); continue; }
@@ -244,7 +278,7 @@ function randeazaSetari() {
     <p class="mic" style="display:block;text-align:center">STR Rapoarte pentru telefon · fișele, căutarea și totalurile. Conturile, ștergerile și comenzile SSD sunt în aplicația de pe PC.</p>`;
   $('#sAdu').onclick = () => sincronizeaza(true);
   $('#sGol').onclick = async () => { if (!confirm('Ștergi fișele de pe telefon? Se aduc din nou de pe GitHub.')) return; await db.goleste(); await incarca(); sincronizeaza(true); };
-  $('#sIesi').onclick = async () => { if (!confirm('Ieși? Telefonul uită parola; fișele de pe telefon se șterg.')) return; mem.del('cheie'); await db.goleste(); location.reload(); };
+  $('#sIesi').onclick = async () => { if (!confirm('Ieși? Telefonul uită parola; fișele de pe telefon se șterg.')) return; mem.del('cheie'); mem.del('sterse'); await db.goleste(); location.reload(); };
 }
 
 // ---------- legături ----------
